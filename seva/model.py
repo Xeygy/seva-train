@@ -232,3 +232,24 @@ class SGMWrapper(nn.Module):
             dense_y=c["dense_vector"],
             **kwargs,
         )
+# added
+class SGMWrapper_Q(nn.Module):
+    def __init__(self, module: Seva):
+        super().__init__()
+        self.module = module
+
+    def forward(
+        self, x: torch.Tensor, t: torch.Tensor, 
+        concat: torch.Tensor, crossattn: torch.Tensor,
+        dense_vector: torch.Tensor
+       
+    ) -> torch.Tensor:
+        x = torch.cat(x, concat, dim=1)
+        num_frames = x.shape[0]
+        return self.module(
+            x,
+            t=t,
+            y=crossattn,
+            dense_y=dense_vector,
+            num_frames = num_frames,
+        )

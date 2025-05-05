@@ -151,6 +151,42 @@ class DiscreteDenoiser(object):
             + input * c_skip
         )
 
+# added
+class DiscreteDenoiser_Q(DiscreteDenoiser):
+    sigmas: torch.Tensor
+
+    def __init__(
+        self,
+        discretization: DDPMDiscretization,
+        num_idx: int = 1000,
+        device: str | torch.device = "cpu",
+    ):
+        super().__init__(discretization, num_idx, device)
+        
+
+    def __call__(
+        self,
+        network: nn.Module,
+        input: torch.Tensor,
+        sigma: torch.Tensor,
+        cond: dict,
+        **additional_model_inputs,
+    ) -> torch.Tensor:
+        sigma = self.idx_to_sigma(self.sigma_to_idx(sigma))
+        sigma_shape = sigma.shape
+        sigma = append_dims(sigma, input.ndim)
+        c_skip, c_out, c_in, c_noise = self.scaling(sigma)
+        c_noise = self.sigma_to_idx(c_noise.reshape(sigma_shape))
+        if "replace" in cond:
+            x, mask = cond.pop("replace").split((input.shape[1], 1), dim=1)
+            input = input * (1 - mask) + x * mask
+        return (
+            network(input * c_in, c_noise, 
+                cond["concat"], cond["crossattn"], cond["dense_vector"]) * c_out
+            + input * c_skip
+        )
+
+
 
 class ConstantScaleRule(object):
     def __call__(self, scale: float | torch.Tensor) -> float | torch.Tensor:
